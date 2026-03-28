@@ -103,6 +103,7 @@ cd infra && ./deploy_frontend.sh
 - **Separation of concerns** — frontend UI components are single-responsibility (MetricChart, Sidebar, UploadView, HistoryView); backend is split into route handlers, auth middleware, and AI orchestration
 - **React memoisation** — `React.memo` and `useMemo` on the `MetricChart` component prevent redundant re-renders on large result sets
 - **Consistent CSS design system** — all colours, spacing, and radii are driven by CSS custom properties (`--red`, `--surface`, `--border`, etc.), making global theming a one-line change
+- **Comprehensive Linting & Styling** — strict enforcement of Python formatting with `Ruff` and frontend standardisation with `Prettier` ensuring unassailable codebase structural alignment
 
 ---
 
@@ -125,6 +126,8 @@ cd infra && ./deploy_frontend.sh
 - **Async FastAPI** — all endpoints are `async def`; the voice WebSocket uses `asyncio.TaskGroup` to run browser→agent and agent→browser concurrently with no blocking I/O
 - **Firestore streaming** — history queries use Firestore's `.stream()` iterator instead of loading all documents into memory at once
 - **Cloud Run autoscaling** — both services scale to zero when idle and spin up on demand, keeping costs minimal outside active usage
+- **GZip Compression Pipeline** — backend dynamically compresses all JSON payloads using `GZipMiddleware` to ensure minimum data transmission and stable load times
+- **React Lazy Loading** — heavy components like the AI Voice assistant are loaded via `React.lazy()` and `Suspense`, vastly optimizing the initial network payload
 
 ---
 
@@ -134,6 +137,7 @@ cd infra && ./deploy_frontend.sh
 - **`frontend/src/App.test.jsx`** — component tests for the core App rendering flows (loading state, login gate, upload state) using React Testing Library
 - **Manual test coverage** — upload tested with blood test PDFs, CBC images, and lipid panel JPEGs; AI output verified against known reference ranges
 - **Error paths tested** — network failures, oversized files (>10MB), and malformed AI responses are all handled with user-facing error banners and logged server-side
+- **CI/CD Pipeline Integration** — fully automated testing and validation workflows exist via GitHub Actions (`ci.yml`), enforcing test strategy breadth and codebase security upon every commit
 
 ---
 
