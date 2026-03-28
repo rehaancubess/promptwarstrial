@@ -1,6 +1,12 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { getAnalytics, logEvent, isSupported } from 'firebase/analytics';
+import { initializeApp } from "firebase/app";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+} from "firebase/auth";
+import { getAnalytics, logEvent, isSupported } from "firebase/analytics";
 
 // Firebase config from environment variables
 const firebaseConfig = {
@@ -27,7 +33,7 @@ try {
     }
   });
 } catch (e) {
-  console.warn('Firebase config not complete. Auth may not work.', e);
+  console.warn("Firebase config not complete. Auth may not work.", e);
 }
 
 /**
@@ -42,4 +48,11 @@ export function trackEvent(eventName, params = {}) {
   }
 }
 
-export { auth, googleProvider, analytics, signInWithPopup, signOut, onAuthStateChanged };
+export {
+  auth,
+  googleProvider,
+  analytics,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+};

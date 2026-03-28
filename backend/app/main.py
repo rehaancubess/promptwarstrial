@@ -6,10 +6,21 @@ import base64
 import logging
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, Depends, WebSocket, WebSocketDisconnect
+from fastapi import (
+    FastAPI,
+    UploadFile,
+    File,
+    HTTPException,
+    Query,
+    Depends,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from pydantic import BaseModel
@@ -18,7 +29,7 @@ from google import genai
 from google.genai import types
 
 import firebase_admin
-from firebase_admin import credentials, firestore, auth as firebase_auth
+from firebase_admin import firestore, auth as firebase_auth
 
 # ─── ADK imports ──────────────────────────────────────────────────────────────
 from google.adk.runners import Runner
@@ -40,8 +51,8 @@ app = FastAPI(title="Hemora API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173", 
-        "http://127.0.0.1:5173", 
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
         "https://hemora-frontend-713215250376.us-central1.run.app",
         "https://hemora-frontend-5ogiqxpdea-uc.a.run.app",
     ],
@@ -49,6 +60,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Setup Gzip for efficiency
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 security = HTTPBearer()
 
@@ -69,9 +83,11 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         return "fake-user-id"
     try:
         decoded_token = firebase_auth.verify_id_token(credentials.credentials)
-        return decoded_token['uid']
+        return decoded_token["uid"]
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Invalid authentication credentials: {e}")
+        raise HTTPException(
+            status_code=401, detail=f"Invalid authentication credentials: {e}"
+        )
 
 
 def verify_ws_token(token: str) -> Optional[str]:
@@ -80,7 +96,7 @@ def verify_ws_token(token: str) -> Optional[str]:
         return "fake-user-id"
     try:
         decoded = firebase_auth.verify_id_token(token)
-        return decoded['uid']
+        return decoded["uid"]
     except Exception:
         return None
 
@@ -91,9 +107,11 @@ client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 # ─── ADK session service (in-memory for now) ─────────────────────────────────
 session_service = InMemorySessionService()
 
+
 # ─── Pydantic models ─────────────────────────────────────────────────────────
 class Metric(BaseModel):
     """A single medical metric extracted from a report."""
+
     name: str
     value: float
     unit: str
@@ -106,6 +124,7 @@ class Metric(BaseModel):
 
 class AnalysisResult(BaseModel):
     """Full analysis result from the Gemini model."""
+
     extracted_metrics: List[Metric]
     insights: List[str]
     recommendations: List[str]
@@ -129,15 +148,15 @@ async def get_history(user_id: str = Depends(get_current_user)):
         return {"history": []}
     try:
         docs = (
-            db.collection('reports')
-            .where('user_id', '==', user_id)
-            .order_by('created_at', direction=firestore.Query.DESCENDING)
+            db.collection("reports")
+            .where("user_id", "==", user_id)
+            .order_by("created_at", direction=firestore.Query.DESCENDING)
             .stream()
         )
         history = []
         for doc in docs:
             data = doc.to_dict()
-            data['id'] = doc.id
+            data["id"] = doc.id
             history.append(data)
         return {"history": history}
     except Exception as e:
@@ -146,7 +165,9 @@ async def get_history(user_id: str = Depends(get_current_user)):
 
 
 @app.post("/api/analyze")
-async def analyze_data(file: UploadFile = File(...), user_id: str = Depends(get_current_user)):
+async def analyze_data(
+    file: UploadFile = File(...), user_id: str = Depends(get_current_user)
+):
     try:
         if int(file.size or 0) > 10 * 1024 * 1024:
             raise HTTPException(400, "File too large. Maximum size is 10MB.")
@@ -158,9 +179,9 @@ async def analyze_data(file: UploadFile = File(...), user_id: str = Depends(get_
         historical_context = ""
         if db:
             docs = (
-                db.collection('reports')
-                .where('user_id', '==', user_id)
-                .order_by('created_at', direction=firestore.Query.DESCENDING)
+                db.collection("reports")
+                .where("user_id", "==", user_id)
+                .order_by("created_at", direction=firestore.Query.DESCENDING)
                 .limit(1)
                 .stream()
             )
@@ -188,7 +209,7 @@ async def analyze_data(file: UploadFile = File(...), user_id: str = Depends(get_
         """
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model="gemini-2.5-flash",
             contents=[
                 prompt,
                 types.Part.from_bytes(data=content, mime_type=mime_type),
@@ -204,12 +225,16 @@ async def analyze_data(file: UploadFile = File(...), user_id: str = Depends(get_
 
         # 2. Persist to Firestore
         if db:
-            db.collection('reports').add({
-                "user_id": user_id,
-                "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                "filename": file.filename,
-                "analysis": result_json,
-            })
+            db.collection("reports").add(
+                {
+                    "user_id": user_id,
+                    "created_at": datetime.datetime.now(
+                        datetime.timezone.utc
+                    ).isoformat(),
+                    "filename": file.filename,
+                    "analysis": result_json,
+                }
+            )
 
         return result_json
 
@@ -217,7 +242,9 @@ async def analyze_data(file: UploadFile = File(...), user_id: str = Depends(get_
         raise
     except Exception as e:
         logger.error(f"Error during analysis: {e}")
-        raise HTTPException(status_code=500, detail="Analysis failed. Please try again.")
+        raise HTTPException(
+            status_code=500, detail="Analysis failed. Please try again."
+        )
 
 
 # ─── WebSocket Voice Doctor Endpoint ─────────────────────────────────────────
@@ -251,15 +278,17 @@ async def voice_websocket(websocket: WebSocket, token: str = Query(default="")):
         if db:
             try:
                 docs = (
-                    db.collection('reports')
-                    .where('user_id', '==', user_id)
-                    .order_by('created_at', direction=firestore.Query.DESCENDING)
+                    db.collection("reports")
+                    .where("user_id", "==", user_id)
+                    .order_by("created_at", direction=firestore.Query.DESCENDING)
                     .limit(1)
                     .stream()
                 )
                 reports = [d.to_dict() for d in docs]
                 if reports:
-                    metrics = reports[0].get("analysis", {}).get("extracted_metrics", [])
+                    metrics = (
+                        reports[0].get("analysis", {}).get("extracted_metrics", [])
+                    )
                     if metrics:
                         health_context = "\n\nUSER'S MOST RECENT HEALTH DATA:\n"
                         for m in metrics:
@@ -279,7 +308,9 @@ async def voice_websocket(websocket: WebSocket, token: str = Query(default="")):
             response_modalities=["AUDIO"],
             speech_config=genai_types.SpeechConfig(
                 voice_config=genai_types.VoiceConfig(
-                    prebuilt_voice_config=genai_types.PrebuiltVoiceConfig(voice_name="Aoede")
+                    prebuilt_voice_config=genai_types.PrebuiltVoiceConfig(
+                        voice_name="Aoede"
+                    )
                 )
             ),
         )
@@ -297,8 +328,7 @@ async def voice_websocket(websocket: WebSocket, token: str = Query(default="")):
         async def send_initial_context():
             """Send initial greeting context to the agent."""
             content = genai_types.Content(
-                role="user",
-                parts=[genai_types.Part(text=initial_message)]
+                role="user", parts=[genai_types.Part(text=initial_message)]
             )
             live_request_queue.send_content(content=content)
 
@@ -323,14 +353,14 @@ async def voice_websocket(websocket: WebSocket, token: str = Query(default="")):
                                 live_request_queue.send_content(
                                     content=genai_types.Content(
                                         role="user",
-                                        parts=[genai_types.Part(text="<end_of_turn>")]
+                                        parts=[genai_types.Part(text="<end_of_turn>")],
                                     )
                                 )
                             elif data.get("type") == "text_message":
                                 # Allow text messages too (fallback)
                                 content = genai_types.Content(
                                     role="user",
-                                    parts=[genai_types.Part(text=data.get("text", ""))]
+                                    parts=[genai_types.Part(text=data.get("text", ""))],
                                 )
                                 live_request_queue.send_content(content=content)
             except WebSocketDisconnect:
@@ -351,16 +381,24 @@ async def voice_websocket(websocket: WebSocket, token: str = Query(default="")):
                         continue
 
                     # Stream audio chunks
-                    if getattr(event, 'content', None):
-                        for part in getattr(event.content, 'parts', []):
-                            if getattr(part, 'inline_data', None) and getattr(part.inline_data, 'data', None):
-                                audio_b64 = base64.b64encode(part.inline_data.data).decode("utf-8")
-                                await websocket.send_json({"type": "audio", "data": audio_b64})
-                            if getattr(part, 'text', None):
-                                await websocket.send_json({"type": "text", "data": part.text})
+                    if getattr(event, "content", None):
+                        for part in getattr(event.content, "parts", []):
+                            if getattr(part, "inline_data", None) and getattr(
+                                part.inline_data, "data", None
+                            ):
+                                audio_b64 = base64.b64encode(
+                                    part.inline_data.data
+                                ).decode("utf-8")
+                                await websocket.send_json(
+                                    {"type": "audio", "data": audio_b64}
+                                )
+                            if getattr(part, "text", None):
+                                await websocket.send_json(
+                                    {"type": "text", "data": part.text}
+                                )
 
                     # Turn complete signal
-                    if getattr(event, 'turn_complete', False):
+                    if getattr(event, "turn_complete", False):
                         await websocket.send_json({"type": "status", "data": "done"})
 
             except WebSocketDisconnect:
@@ -374,17 +412,16 @@ async def voice_websocket(websocket: WebSocket, token: str = Query(default="")):
 
         # 4. Run all tasks concurrently
         await send_initial_context()
-        await asyncio.gather(
-            browser_to_agent(),
-            agent_to_browser()
-        )
+        await asyncio.gather(browser_to_agent(), agent_to_browser())
 
     except WebSocketDisconnect:
         logger.info(f"Voice WebSocket disconnected: user={user_id}")
     except Exception as e:
         logger.error(f"Voice WebSocket error: {e}")
         try:
-            await websocket.send_json({"type": "error", "data": "Internal server error"})
+            await websocket.send_json(
+                {"type": "error", "data": "Internal server error"}
+            )
             await websocket.close()
         except Exception:
             pass

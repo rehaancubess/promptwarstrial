@@ -2,6 +2,7 @@
 Hemora Voice Doctor Agent
 Powered by Google ADK + Gemini 2.5 Flash Native Audio
 """
+
 import os
 from google.adk.agents import Agent
 
@@ -24,7 +25,9 @@ Important rules:
 
 # The model that supports native audio bi-directional streaming
 # gemini-2.5-flash-native-audio-preview-12-2025 supports Multimodal Live API
-LIVE_MODEL = os.environ.get("GEMINI_LIVE_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
+LIVE_MODEL = os.environ.get(
+    "GEMINI_LIVE_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025"
+)
 
 root_agent = Agent(
     name="hemora_voice_doctor",
