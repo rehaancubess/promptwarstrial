@@ -1,9 +1,8 @@
-#!/bin/bash
 # Deploy Frontend to Google Cloud Run
-
 PROJECT_ID=$(gcloud config get-value project)
 REGION="us-central1"
 SERVICE_NAME="hemora-frontend"
+BACKEND_URL="https://hemora-backend-713215250376.us-central1.run.app"
 
 echo "Deploying Hemora Frontend to Cloud Run in project $PROJECT_ID..."
 gcloud run deploy $SERVICE_NAME \
@@ -12,4 +11,5 @@ gcloud run deploy $SERVICE_NAME \
   --region $REGION \
   --allow-unauthenticated \
   --project $PROJECT_ID \
+  --set-build-env-vars="VITE_FIREBASE_API_KEY=<YOUR_API_KEY>,VITE_FIREBASE_AUTH_DOMAIN=<YOUR_DOMAIN>,VITE_FIREBASE_PROJECT_ID=<YOUR_PROJECT_ID>,VITE_FIREBASE_STORAGE_BUCKET=<YOUR_BUCKET>,VITE_FIREBASE_MESSAGING_SENDER_ID=<YOUR_SENDER_ID>,VITE_FIREBASE_APP_ID=<YOUR_APP_ID>,VITE_FIREBASE_MEASUREMENT_ID=<YOUR_MEASUREMENT_ID>,VITE_API_URL=$BACKEND_URL" \
   --quiet
