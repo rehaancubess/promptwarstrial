@@ -138,10 +138,42 @@ h1, h2, h3, h4, h5, h6 {
   gap: 1.5rem;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 900px) {
   .dashboard-grid {
-    grid-template-columns: 300px 1fr;
+    grid-template-columns: 350px 1fr;
   }
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+@media (min-width: 768px) {
+  .metrics-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.trend-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.trend-badge.danger {
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--danger);
+}
+.trend-badge.success {
+  background: rgba(46, 160, 67, 0.1);
+  color: var(--success);
+}
+.trend-badge.neutral {
+  background: rgba(139, 148, 158, 0.1);
+  color: var(--gray);
 }
 
 .file-drop-area {
