@@ -2,8 +2,9 @@
 PROJECT_ID=$(gcloud config get-value project)
 REGION="us-central1"
 SERVICE_NAME="hemora-backend"
-GEMINI_API_KEY="<YOUR_GEMINI_API_KEY>"
-
+set -a
+source ../backend/.env || true
+set +a
 echo "Deploying Hemora Backend to Cloud Run in project $PROJECT_ID..."
 gcloud run deploy $SERVICE_NAME \
   --source ../backend \

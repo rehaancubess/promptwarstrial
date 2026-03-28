@@ -23,8 +23,8 @@ Important rules:
 """
 
 # The model that supports native audio bi-directional streaming
-# gemini-2.5-flash-preview-native-audio is the live audio model
-LIVE_MODEL = os.environ.get("GEMINI_LIVE_MODEL", "gemini-2.5-flash-exp-native-audio-thinking-dialog")
+# gemini-2.5-flash-native-audio-preview-12-2025 supports Multimodal Live API
+LIVE_MODEL = os.environ.get("GEMINI_LIVE_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
 
 root_agent = Agent(
     name="hemora_voice_doctor",

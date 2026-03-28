@@ -33,7 +33,6 @@ function float32ToInt16(float32Array) {
 }
 
 export default function VoiceDoctor({ user }) {
-  const [isOpen, setIsOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -235,7 +234,6 @@ export default function VoiceDoctor({ user }) {
 
   const handleClose = useCallback(() => {
     disconnect();
-    setIsOpen(false);
     setTranscript([]);
     setError(null);
   }, [disconnect]);
@@ -257,147 +255,117 @@ export default function VoiceDoctor({ user }) {
   }[status] || status;
 
   return (
-    <>
-      {/* Floating Trigger Button */}
-      <motion.button
-        className="voice-doctor-fab"
-        onClick={() => setIsOpen(true)}
-        style={{ display: isOpen ? 'none' : 'flex' }}
-        whileHover={{ scale: 1.08 }}
-        whileTap={{ scale: 0.95 }}
-        aria-label="Open AI Voice Doctor"
-        title="Talk to Dr. Hemora"
-      >
-        <Stethoscope size={22} />
-        <span>Voice Doctor</span>
-        <motion.span
-          className="voice-fab-ping"
-          animate={{ scale: [1, 1.5, 1], opacity: [0.6, 0, 0.6] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-        />
-      </motion.button>
-
-      {/* Doctor Panel */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            className="voice-doctor-panel"
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.95 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            role="dialog"
-            aria-label="Voice Doctor"
-          >
-            {/* Header */}
-            <div className="voice-doctor-header">
-              <div className="flex items-center gap-3">
-                <div className="voice-avatar">
-                  <Stethoscope size={18} />
-                  {/* Live status dot */}
-                  <motion.span
-                    className="voice-status-dot"
-                    style={{ background: statusColor }}
-                    animate={status === 'connected' || status === 'speaking' ? { scale: [1, 1.3, 1] } : {}}
-                    transition={{ repeat: Infinity, duration: 1.2 }}
-                  />
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">Dr. Hemora</p>
-                  <p className="text-xs" style={{ color: statusColor }}>{statusLabel}</p>
-                </div>
-              </div>
-              <button onClick={handleClose} className="voice-close-btn" aria-label="Close Voice Doctor">
-                <X size={16} />
-              </button>
+    <div className="voice-fullscreen-container">
+      <div className="voice-fullscreen-panel" role="region" aria-label="Voice Doctor Interface">
+        {/* Header */}
+        <div className="voice-doctor-header">
+          <div className="flex items-center gap-3">
+            <div className="voice-avatar">
+              <Stethoscope size={24} color={statusColor} />
+              {/* Live status dot */}
+              <motion.span
+                className="voice-status-dot"
+                style={{ background: statusColor }}
+                animate={status === 'connected' || status === 'speaking' ? { scale: [1, 1.3, 1] } : {}}
+                transition={{ repeat: Infinity, duration: 1.2 }}
+              />
             </div>
-
-            {/* Transcript area */}
-            <div className="voice-transcript" role="log" aria-live="polite" aria-label="Conversation transcript">
-              {transcript.length === 0 && (
-                <div className="voice-empty-state">
-                  <Activity size={32} className="mb-3 opacity-40" />
-                  <p className="text-sm opacity-50 text-center">
-                    Hi! Press the mic button below to start talking to Dr. Hemora.
-                    <br /><br />
-                    Ask about your lab results, what your metrics mean, or general health questions.
-                  </p>
-                </div>
-              )}
-              {transcript.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`voice-message ${msg.role}`}
-                >
-                  <span className="voice-message-label">
-                    {msg.role === 'doctor' ? '🩺 Dr. Hemora' : '🎤 You'}
-                  </span>
-                  <p>{msg.text}</p>
-                </div>
-              ))}
-              {status === 'thinking' && (
-                <div className="voice-message doctor">
-                  <span className="voice-message-label">🩺 Dr. Hemora</span>
-                  <div className="voice-thinking">
-                    <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0 }}>●</motion.span>
-                    <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.2 }}>●</motion.span>
-                    <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.4 }}>●</motion.span>
-                  </div>
-                </div>
-              )}
-              <div ref={transcriptEndRef} />
+            <div>
+              <p className="font-semibold text-lg" style={{ color: 'var(--text-primary)'}}>Dr. Hemora</p>
+              <p className="text-sm font-medium" style={{ color: statusColor }}>{statusLabel}</p>
             </div>
+          </div>
+          {status !== 'idle' && (
+            <button onClick={handleClose} className="voice-close-btn" aria-label="End Session">
+              <X size={20} /> End Session
+            </button>
+          )}
+        </div>
 
-            {/* Error */}
-            {error && (
-              <div className="voice-error" role="alert">
-                {error}
-              </div>
-            )}
-
-            {/* Controls */}
-            <div className="voice-controls">
-              {/* Waveform visualizer */}
-              <div className="voice-waveform" aria-hidden="true">
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <motion.div
-                    key={i}
-                    className="voice-bar"
-                    animate={isRecording ? {
-                      height: ['4px', `${8 + Math.random() * 20}px`, '4px'],
-                    } : { height: '4px' }}
-                    transition={{ repeat: Infinity, duration: 0.4 + i * 0.05, ease: 'easeInOut' }}
-                  />
-                ))}
-              </div>
-
-              {/* Mic toggle button */}
-              <motion.button
-                className={`voice-mic-btn ${status !== 'idle' ? 'active' : ''}`}
-                onClick={handleToggle}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                disabled={isConnecting}
-                aria-label={status === 'idle' ? 'Start conversation' : 'End conversation'}
-                aria-pressed={status !== 'idle'}
-              >
-                {isConnecting ? (
-                  <Loader2 size={22} className="animate-spin" />
-                ) : status === 'idle' ? (
-                  <Mic size={22} />
-                ) : (
-                  <MicOff size={22} />
-                )}
-              </motion.button>
-
-              {/* Speaker indicator */}
-              <div className="voice-speaker-indicator" aria-label={isSpeaking ? 'Doctor is speaking' : 'Waiting'}>
-                <Volume2 size={14} style={{ opacity: isSpeaking ? 1 : 0.3, color: isSpeaking ? '#58a6ff' : 'inherit' }} />
+        {/* Transcript area */}
+        <div className="voice-transcript" role="log" aria-live="polite" aria-label="Conversation transcript">
+          {transcript.length === 0 && (
+            <div className="voice-empty-state">
+              <Activity size={48} className="mb-4 opacity-40 mx-auto" style={{ color: 'var(--red)' }} />
+              <p className="text-base text-center" style={{ color: 'var(--text-secondary)' }}>
+                Hi! Press the microphone button below to start talking to Dr. Hemora.
+                <br /><br />
+                The doctor is ready to review your recent labs, explain your metrics, and answer your wellness questions.
+              </p>
+            </div>
+          )}
+          {transcript.map((msg, i) => (
+            <div
+              key={i}
+              className={`voice-message ${msg.role}`}
+            >
+              <span className="voice-message-label">
+                {msg.role === 'doctor' ? '🩺 Dr. Hemora' : '🎤 You'}
+              </span>
+              <p>{msg.text}</p>
+            </div>
+          ))}
+          {status === 'thinking' && (
+            <div className="voice-message doctor">
+              <span className="voice-message-label">🩺 Dr. Hemora</span>
+              <div className="voice-thinking">
+                <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0 }}>●</motion.span>
+                <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.2 }}>●</motion.span>
+                <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.4 }}>●</motion.span>
               </div>
             </div>
-          </motion.div>
+          )}
+          <div ref={transcriptEndRef} />
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="voice-error" role="alert">
+            {error}
+          </div>
         )}
-      </AnimatePresence>
-    </>
+
+        {/* Controls */}
+        <div className="voice-controls">
+          {/* Waveform visualizer */}
+          <div className="voice-waveform" aria-hidden="true">
+            {Array.from({ length: 24 }).map((_, i) => (
+              <motion.div
+                key={i}
+                className="voice-bar"
+                animate={isRecording ? {
+                  height: ['4px', `${12 + Math.random() * 32}px`, '4px'],
+                } : { height: '4px' }}
+                transition={{ repeat: Infinity, duration: 0.4 + (i%5) * 0.05, ease: 'easeInOut' }}
+              />
+            ))}
+          </div>
+
+          {/* Mic toggle button */}
+          <motion.button
+            className={`voice-mic-btn-large ${status !== 'idle' ? 'active' : ''}`}
+            onClick={handleToggle}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            disabled={isConnecting}
+            aria-label={status === 'idle' ? 'Start conversation' : 'End conversation'}
+            aria-pressed={status !== 'idle'}
+          >
+            {isConnecting ? (
+              <Loader2 size={32} className="animate-spin" />
+            ) : status === 'idle' ? (
+              <Mic size={32} />
+            ) : (
+              <Activity size={32} />
+            )}
+          </motion.button>
+          
+          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+            {status === 'idle' ? 'Click to Start Session' : 'Listening...'}
+          </div>
+
+        </div>
+      </div>
+    </div>
   );
 }

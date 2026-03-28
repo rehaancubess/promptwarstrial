@@ -39,7 +39,12 @@ app = FastAPI(title="Hemora API")
 # Setup CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "https://yourfrontend.com"],
+    allow_origins=[
+        "http://localhost:5173", 
+        "http://127.0.0.1:5173", 
+        "https://hemora-frontend-713215250376.us-central1.run.app",
+        "https://hemora-frontend-5ogiqxpdea-uc.a.run.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -121,7 +126,7 @@ async def health_check():
 @app.get("/api/history")
 async def get_history(user_id: str = Depends(get_current_user)):
     if not db:
-        raise HTTPException(status_code=500, detail="Database not configured.")
+        return {"history": []}
     try:
         docs = (
             db.collection('reports')
@@ -346,16 +351,16 @@ async def voice_websocket(websocket: WebSocket, token: str = Query(default="")):
                         continue
 
                     # Stream audio chunks
-                    if event.server_content and event.server_content.model_turn:
-                        for part in event.server_content.model_turn.parts:
-                            if part.inline_data and part.inline_data.data:
+                    if getattr(event, 'content', None):
+                        for part in getattr(event.content, 'parts', []):
+                            if getattr(part, 'inline_data', None) and getattr(part.inline_data, 'data', None):
                                 audio_b64 = base64.b64encode(part.inline_data.data).decode("utf-8")
                                 await websocket.send_json({"type": "audio", "data": audio_b64})
-                            if part.text:
+                            if getattr(part, 'text', None):
                                 await websocket.send_json({"type": "text", "data": part.text})
 
                     # Turn complete signal
-                    if event.server_content and event.server_content.turn_complete:
+                    if getattr(event, 'turn_complete', False):
                         await websocket.send_json({"type": "status", "data": "done"})
 
             except WebSocketDisconnect:
@@ -369,9 +374,10 @@ async def voice_websocket(websocket: WebSocket, token: str = Query(default="")):
 
         # 4. Run all tasks concurrently
         await send_initial_context()
-        async with asyncio.TaskGroup() as tg:
-            tg.create_task(browser_to_agent())
-            tg.create_task(agent_to_browser())
+        await asyncio.gather(
+            browser_to_agent(),
+            agent_to_browser()
+        )
 
     except WebSocketDisconnect:
         logger.info(f"Voice WebSocket disconnected: user={user_id}")

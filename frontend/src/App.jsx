@@ -805,15 +805,7 @@ export default function App() {
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.18 }}
               >
-                <div className="page-header">
-                  <h1 className="page-title">AI <em>Doctor</em></h1>
-                  <p className="page-desc">
-                    Speak with your personal AI health assistant, powered by real-time voice and your clinical history.
-                  </p>
-                </div>
-                <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  Use the voice assistant panel in the bottom-right corner.
-                </div>
+                <VoiceDoctor user={user} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -828,9 +820,6 @@ export default function App() {
           <a href="#">Terms of Service</a>
         </div>
       </footer>
-
-      {/* Floating Voice Doctor */}
-      <VoiceDoctor user={user} />
     </div>
   );
 }
