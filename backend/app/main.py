@@ -68,7 +68,7 @@ security = HTTPBearer()
 
 # ─── Firebase Init ────────────────────────────────────────────────────────────
 try:
-    firebase_admin.initialize_app()
+    firebase_admin.initialize_app(options={'projectId': 'hemora-4d321'})
     db = firestore.client()
     logger.info("Firestore connected.")
 except Exception as e:
@@ -278,19 +278,17 @@ async def voice_websocket(websocket: WebSocket, token: str = Query(default="")):
         if db:
             try:
                 docs = (
-                    db.collection("reports")
-                    .where("user_id", "==", user_id)
-                    .order_by("created_at", direction=firestore.Query.DESCENDING)
-                    .limit(1)
+                    db.collection('reports')
+                    .where('user_id', '==', user_id)
+                    .order_by('created_at', direction=firestore.Query.ASCENDING)
                     .stream()
                 )
                 reports = [d.to_dict() for d in docs]
                 if reports:
-                    metrics = (
-                        reports[0].get("analysis", {}).get("extracted_metrics", [])
-                    )
-                    if metrics:
-                        health_context = "\n\nUSER'S MOST RECENT HEALTH DATA:\n"
+                    health_context = "\n\nUSER'S FULL HEALTH HISTORY AND METRIC REPORTS (Oldest to Newest):\n"
+                    for i, r in enumerate(reports):
+                        health_context += f"--- REPORT {i+1} (Date: {r.get('created_at', 'Unknown')}) ---\n"
+                        metrics = r.get("analysis", {}).get("extracted_metrics", [])
                         for m in metrics:
                             health_context += f"- {m['name']}: {m['value']} {m['unit']} (Status: {m['status']})\n"
             except Exception as e:
