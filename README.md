@@ -42,6 +42,14 @@ User → React Frontend (Cloud Run)
 
 ---
 
+## Recent Upgrades (Efficiency, Testing & Quality)
+
+- **Efficiency**: Improved performance through backend and frontend optimizations. Added GZipMiddleware in FastAPI to compress JSON responses for faster delivery. On the frontend, used React.lazy() and Suspense to load heavy Voice/ADK components only when needed, reducing initial load time.
+- **Testing**: Implemented a CI/CD pipeline with GitHub Actions (ci.yml). Each commit triggers automated workflows that run Node/Python environments, build the React app, and execute backend tests, ensuring consistent reliability.
+- **Code Quality**: Standardized the codebase for maintainability. Backend uses Ruff for strict formatting and clean imports, while the frontend uses Prettier for consistent structure, resulting in a clear, scalable architecture.
+
+---
+
 ## Tech Stack
 
 **Frontend** — React (Vite) · Framer Motion · Recharts · Lucide Icons  
