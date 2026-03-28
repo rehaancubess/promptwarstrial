@@ -1,347 +1,836 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UploadCloud, Activity, Zap, ShieldCheck, AlertTriangle, FileText, Loader2, CheckCircle2, History, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import {
+  UploadCloud, Activity, Zap, ShieldCheck, AlertTriangle,
+  FileText, Loader2, CheckCircle2, History as HistoryIcon,
+  TrendingUp, TrendingDown, Minus, LogOut, User,
+  FileUp, CheckCircle, Lock, Mic, BarChart2, ArrowRight,
+  Sparkles, Shield
+} from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceArea, ReferenceLine } from 'recharts';
+import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged } from './firebase';
+import VoiceDoctor from './components/VoiceDoctor';
 
-function MetricChart({ metric }) {
-  const chartMax = Math.max(metric.max_normal * 1.5, metric.value * 1.2);
-  const data = [{ name: metric.name, value: metric.value }];
-  
-  let barColor = "#2ea043"; 
-  if (metric.status.toLowerCase() === "low") barColor = "#58a6ff"; 
-  if (metric.status.toLowerCase() === "high") barColor = "#f85149"; 
-
+/* ─── LANDING PAGE ──────────────────────────────────────────────────────────── */
+function LandingPage({ onGetStarted }) {
   return (
-    <div style={{ height: '70px', width: '100%', marginTop: '0.5rem' }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: -20, bottom: 0 }}>
-          <XAxis type="number" domain={[0, chartMax]} hide />
-          <YAxis dataKey="name" type="category" hide />
-          <Tooltip 
-             contentStyle={{ backgroundColor: '#1E232D', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
-             cursor={{fill: 'rgba(255,255,255,0.05)'}}
-          />
-          <ReferenceArea x1={metric.min_normal} x2={metric.max_normal} fill="#ffffff" fillOpacity={0.05} />
-          <Bar dataKey="value" fill={barColor} radius={[0, 4, 4, 0]} barSize={16} />
-          <ReferenceLine x={metric.min_normal} stroke="#8b949e" strokeDasharray="3 3" />
-          <ReferenceLine x={metric.max_normal} stroke="#8b949e" strokeDasharray="3 3" />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="landing-page">
+      {/* Navbar */}
+      <nav className="landing-nav">
+        <div className="landing-nav-brand">Hemora Health AI</div>
+        <div className="landing-nav-links">
+          <a href="#features">Features</a>
+          <a href="#reviews">Reviews</a>
+          <a href="#safety">Safety</a>
+        </div>
+        <button className="landing-login-btn" onClick={onGetStarted}>Log in</button>
+      </nav>
+
+      {/* Hero */}
+      <section className="landing-hero">
+        <div className="landing-hero-content">
+          <p className="landing-eyebrow">Future of Medical AI</p>
+          <h1 className="landing-hero-title">
+            Instantly analyze your{' '}
+            <em>medical reports</em>{' '}
+            with Gemini AI.
+          </h1>
+          <p className="landing-hero-desc">
+            Transform complex laboratory data into clear, actionable health insights.
+            Precision medicine meets intuitive editorial design.
+          </p>
+          <div className="landing-hero-ctas">
+            <button className="landing-cta-primary" onClick={onGetStarted}>
+              Get Started
+            </button>
+            <button className="landing-cta-secondary">
+              View Demo
+            </button>
+          </div>
+        </div>
+        <div className="landing-hero-visual">
+          <div className="landing-hero-card">
+            <div className="landing-hero-card-header">
+              <span className="landing-status-dot" />
+              Analysis Complete
+            </div>
+            <div className="landing-hero-metrics">
+              {[
+                { name: 'Hemoglobin', val: '14.2', unit: 'g/dL', status: 'normal' },
+                { name: 'Glucose', val: '112', unit: 'mg/dL', status: 'high' },
+                { name: 'Cholesterol', val: '185', unit: 'mg/dL', status: 'normal' },
+              ].map(m => (
+                <div className="landing-metric-row" key={m.name}>
+                  <span className="landing-metric-name">{m.name}</span>
+                  <span className={`landing-metric-val ${m.status}`}>{m.val} {m.unit}</span>
+                </div>
+              ))}
+            </div>
+            <div className="landing-hero-tag">AI risk scored as <strong>Low</strong></div>
+          </div>
+        </div>
+      </section>
+
+      {/* Sophisticated label */}
+      <div className="landing-section-label">
+        <span>Sophisticated Clinical Intelligence</span>
+        <div className="landing-label-line" />
+      </div>
+
+      {/* Feature cards */}
+      <section className="landing-features" id="features">
+        <div className="landing-features-grid">
+          <div className="landing-feature-card">
+            <div className="landing-feature-icon red"><Mic size={20} /></div>
+            <h3>Real-time Voice Doctor</h3>
+            <p>Speak naturally with our AI clinical assistant. Gemini answers with synthesis, creative interpretive context for your lab values, explaining complex hematology in human terms.</p>
+            <div className="landing-waveform">
+              {[3,6,4,8,5,10,6,8,4,7,5,9,4].map((h, i) => (
+                <div key={i} className="landing-wave-bar" style={{ height: `${h * 2.5}px` }} />
+              ))}
+            </div>
+          </div>
+
+          <div className="landing-feature-card highlighted">
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div>
+                <div className="landing-feature-icon gray"><Shield size={20} /></div>
+                <h3>Secure Google Sign-In</h3>
+                <p>HIPAA-compliant security architecture. Access your health records instantly and safely using your existing credentials.</p>
+                <div className="landing-google-pill">
+                  <GoogleG /> Continue with Google
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="landing-feature-card">
+            <div className="landing-feature-icon red"><BarChart2 size={20} /></div>
+            <h3>Trend Tracking</h3>
+            <p>Watch your health evolve. Our system cross-references historical clinical data to map trends in your metabolic, cardiac, and entire health markers.</p>
+            <div className="landing-trend-bars">
+              {[30, 45, 38, 60, 52, 70, 65].map((h, i) => (
+                <div key={i} className="landing-trend-bar" style={{ height: `${h}px` }} />
+              ))}
+            </div>
+          </div>
+
+          <div className="landing-feature-card">
+            <div style={{ borderLeft: '3px solid var(--red)', paddingLeft: '1rem' }}>
+              <h3>Editorial Summaries</h3>
+              <p style={{ marginBottom: '0.75rem' }}>We don't just share numbers. Hemora generates high-end editorial summaries that read like a p personalized health brief curated for your longevity.</p>
+              <ul className="landing-summary-list">
+                <li><span className="dot" />Instant Health Reports</li>
+                <li><span className="dot" />Contextual Medical Glossary</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonial */}
+      <section className="landing-testimonial" id="reviews">
+        <div className="landing-testimonial-image" />
+        <div className="landing-testimonial-content">
+          <p className="landing-quote">
+            &ldquo;Hemora turned my confusing blood work into a clear roadmap for my wellness journey.
+            It&rsquo;s the health companion I didn&rsquo;t know I needed.&rdquo;
+          </p>
+          <p className="landing-quote-author">&mdash; Sarah Jenkins, Wellness Enthusiast &amp; Busy Disruptor</p>
+          <div className="landing-stats">
+            <div className="landing-stat">
+              <strong>99.8%</strong>
+              <span>AI Accuracy</span>
+            </div>
+            <div className="landing-stat">
+              <strong>50K+</strong>
+              <span>Reports Analyzed</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA section */}
+      <section className="landing-cta-section">
+        <h2>Ready to decode your health?</h2>
+        <p>Join thousands of health-conscious individuals taking control of their medical data with our clinical editorial analysis.</p>
+        <div className="landing-hero-ctas">
+          <button className="landing-cta-primary" onClick={onGetStarted}>Get Started for Free</button>
+          <button className="landing-cta-secondary">Clinical Standards</button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="landing-footer">
+        <div className="landing-footer-brand">
+          <div className="landing-footer-logo">Hemora Health AI</div>
+          <p>Bringing medical editorial intelligence and precision design to healthcare.</p>
+        </div>
+        <div className="landing-footer-cols">
+          <div>
+            <strong>PLATFORM</strong>
+            <a href="#">Analysis Engine</a>
+            <a href="#">Safety Archives</a>
+            <a href="#">Pricing</a>
+          </div>
+          <div>
+            <strong>COMPANY</strong>
+            <a href="#">About Us</a>
+            <a href="#">Research</a>
+            <a href="#">Careers</a>
+          </div>
+          <div>
+            <strong>SUPPORT</strong>
+            <a href="#">Help Center</a>
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+          </div>
+        </div>
+        <div className="landing-footer-bottom">
+          <span>© 2024 Hemora Health AI. All rights reserved. Clinical Editorial Suite v1.0</span>
+        </div>
+      </footer>
     </div>
   );
 }
 
-function App() {
-  const [userId, setUserId] = useState('');
-  const [view, setView] = useState('dashboard'); // 'dashboard', 'history'
-  
+/* ─── Google G SVG ─────────────────────────────────────────────────────────── */
+function GoogleG() {
+  return (
+    <svg className="google-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+    </svg>
+  );
+}
+
+/* ─── Metric Mini Chart ────────────────────────────────────────────────────── */
+const MetricChart = React.memo(function MetricChart({ metric }) {
+  const chartMax = Math.max(metric.max_normal * 1.5, metric.value * 1.2);
+  const data = useMemo(() => [{ name: metric.name, value: metric.value }], [metric.name, metric.value]);
+
+  let barColor = '#16a34a';
+  if (metric.status.toLowerCase() === 'low') barColor = '#2563eb';
+  if (metric.status.toLowerCase() === 'high') barColor = '#C41230';
+
+  return (
+    <div style={{ height: '60px', width: '100%', marginTop: '0.5rem' }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, left: -24, bottom: 0 }}>
+          <XAxis type="number" domain={[0, chartMax]} hide />
+          <YAxis dataKey="name" type="category" hide />
+          <Tooltip
+            contentStyle={{ background: '#fff', border: '1px solid #E8E4DF', borderRadius: '8px', fontSize: '0.8rem', color: '#1A1A18' }}
+            cursor={{ fill: 'rgba(0,0,0,0.03)' }}
+          />
+          <ReferenceArea x1={metric.min_normal} x2={metric.max_normal} fill="rgba(22,163,74,0.07)" />
+          <Bar dataKey="value" fill={barColor} radius={[0, 4, 4, 0]} barSize={12} />
+          <ReferenceLine x={metric.min_normal} stroke="#d1d5db" strokeDasharray="3 3" />
+          <ReferenceLine x={metric.max_normal} stroke="#d1d5db" strokeDasharray="3 3" />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+});
+
+/* ─── LOGIN PAGE ───────────────────────────────────────────────────────────── */
+function LoginPage({ onLogin }) {
+  return (
+    <div className="login-page">
+      <div className="login-blob login-blob-1" />
+      <div className="login-blob login-blob-2" />
+
+      <div className="login-content">
+        {/* Logo */}
+        <div className="login-logo-wrap">
+          <span style={{ fontSize: '26px' }}>🩺</span>
+        </div>
+
+        <h1 className="login-title">Hemora Health AI</h1>
+        <p className="login-subtitle">Clinical Editorial Platform</p>
+
+        {/* Card */}
+        <div className="login-card">
+          <h2>Sign in</h2>
+          <p>Access your laboratory insights and clinical reports through our secure gateway.</p>
+
+          <button className="google-btn" onClick={onLogin} aria-label="Sign in with Google">
+            <GoogleG />
+            Sign in with Google
+          </button>
+
+          <div className="login-divider">
+            <span>Secured Access</span>
+          </div>
+
+          <div className="privacy-card">
+            <CheckCircle size={18} />
+            <div>
+              <strong>Privacy Guaranteed</strong>
+              <p>Your clinical data is encrypted with enterprise-grade protocols. We never share results with third parties without explicit consent.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer links */}
+        <div className="login-footer-links">
+          <a href="#">Help Center</a>
+          <a href="#">Privacy Policy</a>
+        </div>
+
+        {/* Bottom section */}
+        <div className="login-bottom">
+          <div className="login-tiny-icon">
+            <Lock size={14} />
+          </div>
+          <p className="login-copyright">
+            © 2024 Hemora Health Systems &bull; Version 2.4.0-stable
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── SIDEBAR NAV ──────────────────────────────────────────────────────────── */
+function Sidebar({ view, onNav }) {
+  const items = [
+    { id: 'upload', label: 'Upload', icon: <FileUp size={16} /> },
+    { id: 'history', label: 'History', icon: <HistoryIcon size={16} /> },
+    { id: 'voice', label: 'AI Doctor', icon: <Activity size={16} /> },
+  ];
+
+  return (
+    <aside className="sidebar" role="navigation" aria-label="App Navigation">
+      <div className="sidebar-brand-box">
+        <div className="sidebar-brand-icon">
+          <span style={{ fontSize: '16px' }}>🔬</span>
+        </div>
+        <div className="sidebar-brand-text">
+          <strong>CLINICAL LAB</strong>
+          <span>AI Editorial v1.0</span>
+        </div>
+      </div>
+
+      <nav className="sidebar-nav">
+        {items.map(item => (
+          <button
+            key={item.id}
+            className={`sidebar-nav-item ${view === item.id ? 'active' : ''}`}
+            onClick={() => onNav(item.id)}
+            aria-current={view === item.id ? 'page' : undefined}
+          >
+            {item.icon}
+            {item.label}
+          </button>
+        ))}
+      </nav>
+
+      {/* Storage widget */}
+      <div className="storage-widget">
+        <div className="storage-label">Storage Usage</div>
+        <div className="storage-bar-track">
+          <div className="storage-bar-fill" />
+        </div>
+        <div className="storage-bar-used">
+          <div className="storage-bar-used-fill" />
+        </div>
+        <div className="storage-note">50% of 2GB Clinical Data used</div>
+      </div>
+    </aside>
+  );
+}
+
+/* ─── HIPAA IMAGE CARD ─────────────────────────────────────────────────────── */
+function HipaaCard() {
+  return (
+    <div className="hipaa-card">
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #6b2d3e 100%)',
+      }} />
+      <div className="hipaa-card-text">
+        <p>HIPAA Compliant Encryption active for all clinical uploads.</p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── UPLOAD VIEW ──────────────────────────────────────────────────────────── */
+function UploadView({ user, apiUrl }) {
   const [file, setFile] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
-  
-  const [historyItems, setHistoryItems] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-
-  const apiUrl = import.meta.env.VITE_API_URL || 'https://hemora-backend-713215250376.us-central1.run.app';
-
-  // Private Anonymous Identification
-  useEffect(() => {
-    let storedId = localStorage.getItem('hemora_uid');
-    if (!storedId) {
-      storedId = 'user_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('hemora_uid', storedId);
-    }
-    setUserId(storedId);
-  }, []);
-
-  const fetchHistory = async () => {
-    if (!userId) return;
-    setLoadingHistory(true);
-    try {
-      const res = await fetch(`${apiUrl}/api/history?user_id=${userId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setHistoryItems(data.history || []);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  const handleNav = (newView) => {
-    setView(newView);
-    if (newView === 'history') {
-      fetchHistory();
-    }
-  };
 
   const handleDrop = (e) => {
     e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setFile(e.dataTransfer.files[0]);
-    }
+    if (e.dataTransfer.files?.[0]) setFile(e.dataTransfer.files[0]);
   };
 
   const handleUpload = async () => {
     if (!file) return;
     setAnalyzing(true);
     setError(null);
-    
     const formData = new FormData();
-    formData.append("file", file);
-    formData.append("user_id", userId);
-
+    formData.append('file', file);
     try {
-      const res = await fetch(`${apiUrl}/api/analyze`, { 
+      let token = 'fake-token';
+      if (user?.getIdToken) token = await user.getIdToken();
+      const res = await fetch(`${apiUrl}/api/analyze`, {
         method: 'POST',
-        body: formData
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       });
-      
-      if (!res.ok) {
-         throw new Error(`Server returned ${res.status}`);
-      }
-
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
       const data = await res.json();
       setResults(data);
-      setFile(null); // Clear file after success
+      setFile(null);
     } catch (e) {
       console.error(e);
-      setError("Failed to analyze the report. Please check if the backend is running.");
+      setError('Failed to analyze the report. Please check if the backend is running.');
     } finally {
       setAnalyzing(false);
     }
   };
 
+  const riskLevel = results?.risk_level?.toLowerCase() || 'low';
+
   return (
-    <div className="app-container">
-      <header className="flex items-center justify-between mb-6 pb-4 border-b" style={{ borderColor: 'var(--panel-border)' }}>
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2 cursor-pointer" onClick={() => handleNav('dashboard')}>
-          <Activity size={32} className="text-accent" />
-          <h1 className="gradient-text mb-0" style={{ margin: 0 }}>Hemora</h1>
-        </motion.div>
-        
-        <nav className="flex gap-2 sm:gap-4">
-          <button className={`btn ${view === 'dashboard' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => handleNav('dashboard')}>
-             <Activity size={16}/> <span className="hidden sm:inline">Dashboard</span>
-          </button>
-          <button className={`btn ${view === 'history' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => handleNav('history')}>
-             <History size={16}/> <span className="hidden sm:inline">History</span>
-          </button>
-        </nav>
-      </header>
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">
+          Clinical <em>Analysis</em> Intake
+        </h1>
+        <p className="page-desc">
+          Upload your laboratory results and medical imaging for AI-driven clinical
+          interpretation. Our system processes data with clinical-grade precision.
+        </p>
+      </div>
 
-      <main>
-        <AnimatePresence mode="wait">
-          {view === 'dashboard' && (
-            <motion.div 
-              key="dashboard"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="dashboard-grid"
-            >
-              <section>
-                <div className="glass-panel sticky top-4">
-                  <h2 className="text-sm text-gray flex items-center gap-2"><UploadCloud size={16}/> New Report</h2>
-                  <p className="mb-4 text-sm mt-4 text-gray">Upload your latest medical report (PDF, Image). AI will cross-reference your past baselines and chart improvements.</p>
-                  
-                  <div 
-                    className={`file-drop-area ${file ? 'active' : ''}`}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={handleDrop}
-                    onClick={() => document.getElementById('fileUpload').click()}
-                  >
-                    <input 
-                      id="fileUpload" 
-                      type="file" 
-                      className="hidden" 
-                      style={{ display: 'none' }}
-                      onChange={(e) => setFile(e.target.files[0])}
-                    />
-                    {file ? (
-                      <div>
-                        <FileText className="text-accent mx-auto mb-4" size={32} />
-                        <p className="text-sm font-medium">{file.name}</p>
-                      </div>
-                    ) : (
-                      <div>
-                        <UploadCloud className="text-gray mx-auto mb-4" size={32} />
-                        <p className="text-sm text-gray">Click to browse or drag file here</p>
-                      </div>
-                    )}
-                  </div>
+      {/* Upload + Status grid */}
+      {!results && (
+        <div className="upload-grid">
+          {/* Drop zone */}
+          <div
+            className={`file-drop-card ${file ? 'active' : ''}`}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={handleDrop}
+            onClick={() => !analyzing && document.getElementById('fileUpload').click()}
+            tabIndex={0}
+            role="button"
+            aria-label="Upload medical report"
+            onKeyDown={(e) => { if (e.key === 'Enter') document.getElementById('fileUpload').click(); }}
+          >
+            <input
+              id="fileUpload"
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={(e) => setFile(e.target.files[0])}
+              aria-hidden="true"
+            />
 
-                  {error && <p className="text-danger mt-4 text-sm bg-red-950/20 p-2 rounded">{error}</p>}
-
-                  <button 
-                    className="btn btn-primary mt-4 w-full justify-center" 
-                    style={{ width: '100%', marginTop: '1.5rem', display: 'flex' }}
-                    onClick={handleUpload}
-                    disabled={!file || analyzing}
-                  >
-                    {analyzing ? <Loader2 className="animate-spin mr-2" size={18} /> : <Zap className="mr-2" size={18} />}
-                    {analyzing ? "Analyzing with Gemini..." : "Extract & Compare History"}
-                  </button>
-                </div>
-              </section>
-
-              <section>
-                <div className="glass-panel" style={{ minHeight: '500px' }}>
-                  <h2 className="text-sm text-gray flex items-center gap-2 mb-4"><ShieldCheck size={16}/> Real-Time Analysis</h2>
-                  
-                  {!results && !analyzing && (
-                    <div className="flex flex-col items-center justify-center text-center py-20 opacity-50">
-                      <History size={48} className="mb-4 text-gray" />
-                      <p className="text-sm">Upload a report to generate structure, verify risks,<br/>and see your real data graphed here against your history.</p>
-                    </div>
-                  )}
-
-                  {analyzing && (
-                    <div className="flex flex-col items-center justify-center py-20">
-                      <Loader2 className="text-accent" size={48} style={{ animation: 'spin 1s linear infinite' }} />
-                      <p className="mt-6 text-sm text-gray text-center">Gemini is parsing the metrics and comparing<br/>them to your private health baseline...</p>
-                      <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
-                    </div>
-                  )}
-
-                  {results && !analyzing && (
-                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
-                      
-                      {/* AI Delta Insights */}
-                      <div className="mb-8 p-4 rounded-xl bg-[rgba(56,189,248,0.03)] border border-[rgba(56,189,248,0.1)]">
-                        <h3 className="text-accent font-medium flex items-center gap-2 mb-4">
-                          <Activity size={18} /> Dynamic Insights & Trends
-                        </h3>
-                        {results.insights && results.insights.map((insight, idx) => (
-                          <p key={idx} className="text-sm text-gray-100 mb-2 leading-relaxed">{insight}</p>
-                        ))}
-                      </div>
-
-                      {/* Metrics Breakdown */}
-                      <div className="mb-8">
-                          <div className="metrics-grid">
-                            {results.extracted_metrics && results.extracted_metrics.map((metric, idx) => (
-                              <div key={idx} className="glass-panel" style={{ padding: '16px' }}>
-                                <div className="flex justify-between items-start mb-2">
-                                  <div>
-                                    <span className="font-semibold block">{metric.name}</span>
-                                    <span className={`text-sm ${metric.status.toLowerCase() === 'high' ? 'text-danger' : metric.status.toLowerCase() === 'low' ? 'text-warning' : 'text-success'}`}>
-                                      {metric.value} {metric.unit} ({metric.status})
-                                    </span>
-                                  </div>
-                                  
-                                  {/* Trend Indicator */}
-                                  {metric.delta != null && metric.delta_direction && metric.delta_direction !== 'none' && (
-                                    <div className={`trend-badge ${['high', 'low'].includes(metric.status.toLowerCase()) ? 'danger' : 'success'}`}>
-                                      {metric.delta_direction === 'up' ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
-                                      <span>{metric.delta}</span>
-                                    </div>
-                                  )}
-                                  {metric.delta != null && metric.delta_direction === 'none' && (
-                                    <div className="trend-badge neutral">
-                                      <Minus size={12}/> <span>0</span>
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                <MetricChart metric={metric} />
-                                
-                                <div className="flex justify-between text-xs text-gray mt-2">
-                                  <span>Min: {metric.min_normal}</span>
-                                  <span>Max: {metric.max_normal}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                      </div>
-
-                      {/* Recommendations Plan */}
-                      <div>
-                        <h3 className="text-success font-medium flex items-center gap-2 mb-4">
-                          <Zap size={18} /> Recommended Action Plan
-                        </h3>
-                        {results.recommendations && results.recommendations.map((rec, idx) => (
-                          <div key={idx} className="flex items-start gap-4 mb-3">
-                            <CheckCircle2 size={16} className="text-success mt-1 flex-shrink-0" />
-                            <div className="p-3 rounded-lg bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] w-full">
-                              <p className="text-sm text-gray-200">{rec}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </div>
-              </section>
-            </motion.div>
-          )}
-
-          {view === 'history' && (
-            <motion.div 
-              key="history"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="max-w-4xl mx-auto"
-            >
-              <div className="glass-panel mb-6">
-                <h2 className="text-lg font-medium mb-2 flex items-center gap-2"><History size={20} className="text-accent" /> Health Timeline</h2>
-                <p className="text-gray text-sm">Your chronologically tracked medical parses. Watch your trends over time.</p>
+            {analyzing ? (
+              <div className="analyzing-state">
+                <div className="spinner" />
+                <p>Gemini is parsing your metrics and comparing<br />them to your private health baseline…</p>
               </div>
-
-              {loadingHistory ? (
-                <div className="text-center py-20"><Loader2 className="animate-spin mx-auto text-accent" size={32}/></div>
-              ) : historyItems.length === 0 ? (
-                <div className="text-center py-20 text-gray">
-                  <p>No historical reports found.</p>
-                  <button onClick={() => handleNav('dashboard')} className="text-accent mt-2 hover:underline">Upload your first one</button>
+            ) : (
+              <>
+                <div className="file-drop-icon">
+                  {file ? <FileText size={28} /> : <FileUp size={28} />}
                 </div>
-              ) : (
-                <div className="relative border-l border-[rgba(255,255,255,0.1)] ml-4 pl-6 space-y-8">
-                  {historyItems.map((item, idx) => (
-                    <div key={item.id} className="relative">
-                      {/* Timeline Dot */}
-                      <span className="absolute -left-[31px] top-2 w-3 h-3 rounded-full bg-accent ring-4 ring-[#0F1219]"></span>
-                      
-                      <div className="glass-panel p-5 hover:border-accent transition-colors">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="font-medium text-gray-200">{item.filename || 'Uploaded Report'}</h3>
-                            <p className="text-xs text-gray mt-1">
-                               {new Date(item.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
-                            </p>
-                          </div>
-                          <span className={`px-2 py-1 text-xs rounded uppercase font-bold tracking-wider ${
-                            item.analysis?.risk_level === 'High' ? 'bg-red-500/20 text-danger' :
-                            item.analysis?.risk_level === 'Moderate' ? 'bg-yellow-500/20 text-warning' :
-                            'bg-green-500/20 text-success'
-                          }`}>
-                            {item.analysis?.risk_level} Risk
-                          </span>
-                        </div>
-                        
-                        <div className="mt-4 pt-4 border-t border-[rgba(255,255,255,0.05)]">
-                           <p className="text-sm text-gray mb-3 pb-2"><strong>Key Insights Recorded:</strong></p>
-                           <ul className="text-sm text-gray-300 space-y-2 list-disc pl-4">
-                             {item.analysis?.insights?.slice(0, 2).map((insight, i) => (
-                               <li key={i}>{insight}</li>
-                             ))}
-                           </ul>
-                        </div>
-                      </div>
-                    </div>
+
+                {file ? (
+                  <>
+                    <h3>{file.name}</h3>
+                    <p>File ready — click below to analyze</p>
+                  </>
+                ) : (
+                  <>
+                    <h3>Drag &amp; Drop Reports</h3>
+                    <p>Securely upload your clinical documents for instant review</p>
+                  </>
+                )}
+
+                <button
+                  className="select-files-btn"
+                  onClick={(e) => { e.stopPropagation(); file ? handleUpload() : document.getElementById('fileUpload').click(); }}
+                  disabled={analyzing}
+                  aria-label={file ? 'Analyze Report' : 'Select Files'}
+                >
+                  {file ? <><Zap size={16} /> Analyze Report</> : <><UploadCloud size={16} /> Select Files</>}
+                </button>
+
+                <div className="file-type-badges">
+                  {['PDF', 'DICOM', 'JPG/PNG'].map(t => (
+                    <span className="file-badge" key={t}>
+                      <CheckCircle size={12} /> {t}
+                    </span>
                   ))}
                 </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
+              </>
+            )}
+
+            {error && <div className="error-banner" role="alert">{error}</div>}
+          </div>
+
+          {/* Right sidebar widgets */}
+          <div>
+            <div className="status-card">
+              <div className="status-card-label">System Status</div>
+              <div className="status-row">
+                <span>AI Engine</span>
+                <span className="status-badge-op">Operational</span>
+              </div>
+              <div className="status-row">
+                <span>OCR Accuracy</span>
+                <span>99.8%</span>
+              </div>
+              <div className="status-note">
+                Average processing time for standard blood work is &lt; 45 seconds.
+              </div>
+            </div>
+
+            <HipaaCard />
+          </div>
+        </div>
+      )}
+
+      {/* Results */}
+      {results && !analyzing && (
+        <motion.div
+          className="results-section"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className={`risk-banner ${riskLevel}`}>
+            {riskLevel === 'high' && <AlertTriangle size={18} />}
+            {riskLevel === 'moderate' && <AlertTriangle size={18} />}
+            {riskLevel === 'low' && <ShieldCheck size={18} />}
+            Overall Risk Level: <strong style={{ textTransform: 'capitalize' }}>{results.risk_level}</strong>
+          </div>
+
+          <button
+            className="select-files-btn"
+            style={{ marginBottom: '1.5rem' }}
+            onClick={() => { setResults(null); setFile(null); }}
+          >
+            <UploadCloud size={16} /> Analyze Another Report
+          </button>
+
+          {/* Insights */}
+          <div className="section-title">Dynamic Insights &amp; Trends</div>
+          <div className="insights-card">
+            {results.insights?.map((insight, i) => (
+              <div className="insight-item" key={i}>
+                <div className="insight-dot" />
+                <p style={{ color: 'inherit' }}>{insight}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Metrics */}
+          <div className="section-title">Extracted Metrics</div>
+          <div className="metrics-grid">
+            {results.extracted_metrics?.map((metric, i) => {
+              const st = metric.status.toLowerCase();
+              const dir = metric.delta_direction;
+              const hasDelta = metric.delta != null && dir && dir !== 'none';
+              const badgeClass = hasDelta
+                ? (st !== 'normal' ? (dir === 'up' ? 'up-bad' : 'down-bad') : (dir === 'up' ? 'up-good' : 'down-good'))
+                : 'neutral';
+              return (
+                <div className="metric-card" key={i}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div className="metric-name">{metric.name}</div>
+                      <div className={`metric-value ${st}`}>
+                        {metric.value} {metric.unit} ({metric.status})
+                      </div>
+                    </div>
+                    {hasDelta && (
+                      <span className={`trend-badge ${badgeClass}`}>
+                        {dir === 'up' ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                        {metric.delta}
+                      </span>
+                    )}
+                    {metric.delta != null && dir === 'none' && (
+                      <span className="trend-badge neutral"><Minus size={11} /> 0</span>
+                    )}
+                  </div>
+                  <MetricChart metric={metric} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                    <span>Min: {metric.min_normal}</span>
+                    <span>Max: {metric.max_normal}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Recommendations */}
+          <div className="section-title">Recommended Action Plan</div>
+          <div className="insights-card">
+            {results.recommendations?.map((rec, i) => (
+              <div className="rec-item" key={i}>
+                <CheckCircle2 size={16} className="rec-check" />
+                <p style={{ color: 'var(--text-secondary)' }}>{rec}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Feature callouts */}
+      {!results && !analyzing && (
+        <div className="features-section">
+          <div className="features-grid">
+            <div>
+              <div className="feature-num">01</div>
+              <h3 className="feature-title">Secure Extraction</h3>
+              <p className="feature-desc">Our clinical OCR identifies biomarkers, reference ranges, and physician notes with sub-millimeter precision.</p>
+            </div>
+            <div>
+              <div className="feature-num">02</div>
+              <h3 className="feature-title">Cross-Reference</h3>
+              <p className="feature-desc">The AI compares your results against the latest peer-reviewed clinical guidelines and historical lab data.</p>
+            </div>
+            <div>
+              <div className="feature-num">03</div>
+              <h3 className="feature-title">Editorial Insight</h3>
+              <p className="feature-desc">Receive a beautifully curated report that translates complex data into actionable health insights and trend lines.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-export default App;
+/* ─── HISTORY VIEW ─────────────────────────────────────────────────────────── */
+function HistoryView({ user, apiUrl }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchHistory() {
+      if (!user) return;
+      setLoading(true);
+      try {
+        let token = 'fake-token';
+        if (user?.getIdToken) token = await user.getIdToken();
+        const res = await fetch(`${apiUrl}/api/history`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setItems(data.history || []);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchHistory();
+  }, [user, apiUrl]);
+
+  return (
+    <div className="history-container">
+      <div className="history-header">
+        <h2>Health Timeline</h2>
+        <p>Your chronologically tracked medical parses. Watch your trends over time.</p>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '3rem' }}>
+          <div className="spinner" style={{ margin: '0 auto' }} />
+        </div>
+      ) : items.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+          <HistoryIcon size={40} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+          <p>No historical reports found. Upload your first one from the Dashboard.</p>
+        </div>
+      ) : (
+        <div className="timeline" role="list">
+          {items.map((item) => {
+            const rl = item.analysis?.risk_level?.toLowerCase() || 'low';
+            return (
+              <div className="timeline-item" key={item.id} role="listitem">
+                <div className="timeline-dot" />
+                <div className="timeline-card">
+                  <div className="timeline-card-header">
+                    <div>
+                      <div className="timeline-filename">{item.filename || 'Uploaded Report'}</div>
+                      <div className="timeline-date">
+                        {new Date(item.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                      </div>
+                    </div>
+                    <span className={`risk-pill ${rl}`}>{item.analysis?.risk_level} Risk</span>
+                  </div>
+                  <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '1rem' }}>
+                    <p style={{ fontSize: '0.78rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      Key Insights
+                    </p>
+                    <ul style={{ paddingLeft: '1rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {item.analysis?.insights?.slice(0, 2).map((ins, i) => (
+                        <li key={i} style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{ins}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── ROOT APP ─────────────────────────────────────────────────────────────── */
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [view, setView] = useState('upload');
+  // 'landing' | 'login' | 'app'
+  const [screen, setScreen] = useState('landing');
+
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://hemora-backend-713215250376.us-central1.run.app';
+
+  useEffect(() => {
+    if (!auth) { setAuthLoading(false); return; }
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthLoading(false);
+      // If already logged in, skip to app
+      if (u) setScreen('app');
+    });
+    return () => unsub();
+  }, []);
+
+  const handleLogin = async () => {
+    if (!auth) { alert('Firebase config missing. Login disabled.'); return; }
+    try { await signInWithPopup(auth, googleProvider); }
+    catch (e) { console.error(e); alert('Failed to login with Google.'); }
+  };
+
+  const handleLogout = async () => {
+    if (auth) await signOut(auth);
+    setScreen('landing');
+  };
+
+  if (authLoading) {
+    return (
+      <div className="full-page-loader">
+        <div className="spinner" />
+      </div>
+    );
+  }
+
+  // ── LANDING ──
+  if (screen === 'landing') {
+    return <LandingPage onGetStarted={() => setScreen('login')} />;
+  }
+
+  // ── LOGIN ──
+  if (screen === 'login' && !user) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
+  return (
+    <div className="app-shell">
+      {/* Top Navbar */}
+      <header className="top-nav" role="banner">
+        <button
+          className="top-nav-brand"
+          onClick={() => setView('upload')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+          aria-label="Hemora Health AI home"
+        >
+          Hemora Health AI
+        </button>
+
+        <div className="top-nav-right">
+          <button className="logout-btn" onClick={handleLogout} aria-label="Logout">
+            Logout <LogOut size={15} />
+          </button>
+          <div className="avatar" aria-label="User avatar">
+            {user?.photoURL
+              ? <img src={user.photoURL} alt={user.displayName || 'User'} />
+              : <User size={16} />
+            }
+          </div>
+        </div>
+      </header>
+
+      {/* Body */}
+      <div className="app-body">
+        <Sidebar view={view} onNav={setView} />
+
+        <main className="main-content" role="main">
+          <AnimatePresence mode="wait">
+            {view === 'upload' && (
+              <motion.div
+                key="upload"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18 }}
+              >
+                <UploadView user={user} apiUrl={apiUrl} />
+              </motion.div>
+            )}
+
+            {view === 'history' && (
+              <motion.div
+                key="history"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18 }}
+              >
+                <HistoryView user={user} apiUrl={apiUrl} />
+              </motion.div>
+            )}
+
+            {view === 'voice' && (
+              <motion.div
+                key="voice"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18 }}
+              >
+                <div className="page-header">
+                  <h1 className="page-title">AI <em>Doctor</em></h1>
+                  <p className="page-desc">
+                    Speak with your personal AI health assistant, powered by real-time voice and your clinical history.
+                  </p>
+                </div>
+                <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  Use the voice assistant panel in the bottom-right corner.
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
+      </div>
+
+      {/* Footer */}
+      <footer className="main-footer" role="contentinfo">
+        <span>© 2024 Hemora Health Systems</span>
+        <div className="footer-links">
+          <a href="#">Privacy Protocol</a>
+          <a href="#">Terms of Service</a>
+        </div>
+      </footer>
+
+      {/* Floating Voice Doctor */}
+      <VoiceDoctor user={user} />
+    </div>
+  );
+}

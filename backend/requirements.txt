@@ -1,7 +1,9 @@
 fastapi
 uvicorn[standard]
 google-genai
+google-adk[gemini]
 pydantic
 firebase-admin
 python-multipart
 python-dotenv
+websockets
